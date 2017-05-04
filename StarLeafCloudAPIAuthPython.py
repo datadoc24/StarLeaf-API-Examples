@@ -28,10 +28,14 @@ class StarLeafClient(object):
     def _apiauthentication(self, salt_hex, iterations, challenge_hex):
         if self.key is None:
             salt = binascii.unhexlify(salt_hex)
+            print ("Got a salt of: ")
+            print ' '.join([str(ord(a)) for a in salt])
             self.key = pbkdf2.PBKDF2(passphrase=self.password, salt=salt, iterations=iterations,
                                      digestmodule=hashlib.sha256, macmodule=hmac).read(32)
                 
         challenge = binascii.unhexlify(challenge_hex)
+		
+        print ("Got a key of: " + self.key)
         _hash = hmac.new(self.key, challenge, hashlib.sha256)
         response = _hash.hexdigest()
         return response
@@ -58,8 +62,8 @@ class StarLeafClient(object):
         print json.dumps(self._get('/features').json(), indent=4, sort_keys=True)
         return
     
-username = "<your StarLeaf portal account email address>"
-password = "<your StarLeaf portal password>"
+username = "<your StarLeaf Portal login email address>"
+password = "<your StarLeaf Portal password>"
 api = "https://api.starleaf.com/v1"
 
     
