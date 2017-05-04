@@ -62,7 +62,7 @@ class StarLeafClient(object):
         print json.dumps(self._get('/features').json(), indent=4, sort_keys=True)
         return
     
-username = "<your StarLeaf Portal login email address>"
+username = "<your StarLeaf Portal login email>"
 password = "<your StarLeaf Portal password>"
 api = "https://api.starleaf.com/v1"
 
