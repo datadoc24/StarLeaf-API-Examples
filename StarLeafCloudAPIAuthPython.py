@@ -61,9 +61,13 @@ class StarLeafClient(object):
     def listfeatures(self):
         print json.dumps(self._get('/features').json(), indent=4, sort_keys=True)
         return
+		
+    def listUsers(self):
+        print json.dumps(self._get('/users').json(), indent=4, sort_keys=True)
+        return
     
-username = "<your StarLeaf Portal login email>"
-password = "<your StarLeaf Portal password>"
+username = "<your StarLeaf account email address>"
+password = "<your StarLeaf portal password>"
 api = "https://api.starleaf.com/v1"
 
     
@@ -74,5 +78,7 @@ print "Authentication result: " + str(authStatus)
 if authStatus == 204:
     print "Logged in! Here are the features on your StarLeaf account."
     myClient.listfeatures()
+    print "Here are the users on your StarLeaf account."
+    myClient.listUsers()
 else:
     print "Sorry. Check your username and password!"

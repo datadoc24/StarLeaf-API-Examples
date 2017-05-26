@@ -1,7 +1,7 @@
 <?php
 //settings
-$username = "<your StarLeaf portal account email address>";
-$password = "<your StarLeaf portal password>";
+$username = "<Your StarLeaf Account email address>";
+$password = "<Your StarLeaf Account password>";
 $api = "https://api.starleaf.com/v1/";
 $cookiefile = dirname(__FILE__).'/cookie.txt';
 
@@ -42,7 +42,7 @@ $authenticate_data_string = json_encode( $authenticate_data );
 $authenticate_url = $api."authenticate";
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL,$authenticate_url);
-curl_setopt($ch, CURLOPT_POST, 1);                                                                  
+curl_setopt($ch, CURLOPT_POST, 1);
 curl_setopt($ch, CURLOPT_POSTFIELDS, $authenticate_data_string);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -68,6 +68,23 @@ $ch = curl_init();
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_URL, $features_url);
+curl_setopt($ch, CURLOPT_COOKIEJAR, $cookiefile);
+curl_setopt($ch, CURLOPT_COOKIEFILE, $cookiefile);
+
+$result=curl_exec($ch);
+$code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+var_dump(json_decode($result,true));
+echo("Got HTTP response code of :".$code."\n");
+
+//list my account users
+$users_url = $api."users";
+echo ("GETting $users_url\n");
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_URL, $users_url);
 curl_setopt($ch, CURLOPT_COOKIEJAR, $cookiefile);
 curl_setopt($ch, CURLOPT_COOKIEFILE, $cookiefile);
 
