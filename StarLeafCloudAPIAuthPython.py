@@ -2,9 +2,16 @@ import requests
 import json
 import hashlib
 import hmac
-import pbkdf2
 import binascii
 headers = {'Content-type': 'application/json'}
+
+'''
+Tested in Python 2.7 and Python 3.4
+You might need to pip install requests
+'''
+username = "<your StarLeaf account email address here>"
+password = "<your StarLeaf portal password here>"
+api = "https://api.starleaf.com/v1"
 
 
 class StarLeafClient(object):
@@ -28,14 +35,10 @@ class StarLeafClient(object):
     def _apiauthentication(self, salt_hex, iterations, challenge_hex):
         if self.key is None:
             salt = binascii.unhexlify(salt_hex)
-            print ("Got a salt of: ")
-            print ' '.join([str(ord(a)) for a in salt])
-            self.key = pbkdf2.PBKDF2(passphrase=self.password, salt=salt, iterations=iterations,
-                                     digestmodule=hashlib.sha256, macmodule=hmac).read(32)
-                
+            self.key = hashlib.pbkdf2_hmac('sha256', bytes(self.password, "UTF-8"), salt, 10000)
+
         challenge = binascii.unhexlify(challenge_hex)
-		
-        print ("Got a key of: " + self.key)
+
         _hash = hmac.new(self.key, challenge, hashlib.sha256)
         response = _hash.hexdigest()
         return response
@@ -59,26 +62,21 @@ class StarLeafClient(object):
         return status
         
     def listfeatures(self):
-        print json.dumps(self._get('/features').json(), indent=4, sort_keys=True)
+        print (json.dumps(self._get('/features').json(), indent=4, sort_keys=True))
         return
 		
     def listUsers(self):
-        print json.dumps(self._get('/users').json(), indent=4, sort_keys=True)
+        print (json.dumps(self._get('/users').json(), indent=4, sort_keys=True))
         return
-    
-username = "<your StarLeaf account email address>"
-password = "<your StarLeaf portal password>"
-api = "https://api.starleaf.com/v1"
-
     
 myClient = StarLeafClient(username, password, api)
 authStatus = myClient.authenticate()
-print "Authentication result: " + str(authStatus)
+print ("Authentication result: " + str(authStatus))
 
 if authStatus == 204:
-    print "Logged in! Here are the features on your StarLeaf account."
+    print ("Logged in! Here are the features on your StarLeaf account.")
     myClient.listfeatures()
-    print "Here are the users on your StarLeaf account."
+    print ("Here are the users on your StarLeaf account.")
     myClient.listUsers()
 else:
-    print "Sorry. Check your username and password!"
+    print ("Sorry. Check your username and password!")
