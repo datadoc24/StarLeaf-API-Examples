@@ -1,8 +1,7 @@
 /**
- * Java version
- * Still a work in progress, calculates the response correctly but posting it to /authenticate is still TBD
- * download json-simple.jar to your java_home libs folder
- */
+ * Java example
+ * download json-20160212.jar to your java_home libs/ext folder
+ **/
 import java.net.*;
 import java.io.*;
 import java.util.Arrays;
@@ -10,80 +9,75 @@ import java.security.*;
 import java.security.spec.*;
 import javax.crypto.*;
 import javax.crypto.spec.*;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class StarLeafCloudClient {
-    private String login;
-    private String password;
+    private String login = "<your StarLeaf account email address>";
+    private String password = "<your StarLeaf portal password>";
     private String api = "https://api.starleaf.com/v1";
+    private boolean loggedin = false;
+    private SecretKey key;
 
-    public StarLeafCloudClient(String userlogin, String userpassword) {
-        password = userpassword;
+    public StarLeafCloudClient() {
+        String urlencLogin = new String();
+
+        try {urlencLogin = URLEncoder.encode(login, "UTF-8");}
+        catch(UnsupportedEncodingException uee){ uee.printStackTrace(); }
+
+        String authurl = new String( api + "/challenge?username=" + urlencLogin );
+        JSONObject obj = new JSONObject(getUrlContents(authurl));
+
+
+        String iterations = String.valueOf(obj.get("iterations"));
+        String challenge = (String) obj.get("challenge");
+        String salt = (String) obj.get("salt");
+        Mac mac;
+        byte[] rawresponse = new byte[32];
+        System.out.println("Got a challenge of " + challenge + " and a salt of " + salt);
+        //generate the key and challenge hash
         try{
-            login = URLEncoder.encode(userlogin, "UTF-8");
-        }
-        catch(Exception e){ e.printStackTrace(); }
-        
-        System.out.println("Logging in as " + login);
-        String authurl = new String( api + "/challenge?username=" + login );
-        JSONParser parser = new JSONParser();
-        
-        try {
-            JSONObject obj = (JSONObject) parser.parse(getUrlContents(authurl)); 
-            String iterations = String.valueOf(obj.get("iterations"));
-            String challenge = (String) obj.get("challenge");
-            String salt = (String) obj.get("salt");
-            
-            System.out.println( "Got salt of " + salt + " and challenge of " + challenge + " and " + iterations + " iterations." );
-            
-            SecretKey key = getEncryptedPassword(password, hexStringToByteArray(salt), Integer.valueOf(iterations), 32)  ;
-            
-            Mac mac = Mac.getInstance("HmacSHA256");
+            key = getEncryptedPassword(password, hexStringToByteArray(salt), Integer.valueOf(iterations), 32)  ;
+            mac = Mac.getInstance("HmacSHA256");
             mac.init(key);
-            byte[] rawresponse = mac.doFinal(hexStringToByteArray(challenge));
-            String response = bytesToHex(rawresponse);
-            System.out.println("Created a response of " + response);
-            
-            // Post username and response back to server
-            JSONObject responseObj = new JSONObject();
-            responseObj.put("username", (String) userlogin);
-            responseObj.put("response", (String) response);
-            
-            URL responseUrl = new URL( api + "/authenticate");
-            
-            byte[] postDataBytes = responseObj.toString().getBytes("UTF-8");
-
-            HttpURLConnection conn = (HttpURLConnection)responseUrl.openConnection();
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-type", "application/json");
-            conn.setRequestProperty("Content-Length", String.valueOf(postDataBytes.length));
-            conn.setDoOutput(true);
-            conn.getOutputStream().write(postDataBytes);
-            
-            int code = conn.getResponseCode();
-            Reader in = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
-
-            for (int c; (c = in.read()) >= 0;)
-                System.out.print((char)c);
-        
-            System.out.println( "Got a response code of " + String.valueOf(code));
-            
-            
-            //System.out.println(responseObj);
-            
+            rawresponse = mac.doFinal(hexStringToByteArray(challenge));
         }
-        catch(Exception e){ e.printStackTrace(); }
-        
+        catch (NoSuchAlgorithmException | InvalidKeySpecException | InvalidKeyException e){ e.printStackTrace(); }
+
+        //put together the response JSON
+        String response = bytesToHex(rawresponse);
+        JSONObject responseObj = new JSONObject();
+        responseObj.put("username", login);
+        responseObj.put("response", response);
+        System.out.println("Going to send a response of " + responseObj.toString());
+
+        int code = postJsonResponse( new String(api + "/authenticate") , responseObj.toString() );
+
+        if (code == 204){
+            System.out.println( "Successfully authenticated!");
+            loggedin = true;
+        }
+        else{
+            System.out.println( "Authentication failed - sorry.");
+        }
     }
-    
-     public static void main(String[] args) {
-        System.out.println("Creating a demo StarLeaf Cloud Client"); // Display the string.
-        StarLeafCloudClient myClient = new StarLeafCloudClient("as+mr@starleaf.com","as");
+
+    public void ListFeatures(){
+        if (loggedin){
+            System.out.println( "Your account has these features: " + getUrlContents( api + "/features"));
+        }
+        else{
+            System.out.println( "You must be logged in to see your features.");
+        }
     }
-    
+
+    public static void main(String[] args) {
+        System.out.println("Logging into StarLeaf Cloud"); // Display the string.
+        CookieHandler.setDefault( new CookieManager( null, CookiePolicy.ACCEPT_ALL ) );
+        StarLeafCloudClient myClient = new StarLeafCloudClient();
+        myClient.ListFeatures();
+    }
+
     private static String getUrlContents(String theUrl)
     {
         StringBuilder content = new StringBuilder();
@@ -92,7 +86,7 @@ public class StarLeafCloudClient {
             URL url = new URL(theUrl);
             URLConnection urlConnection = url.openConnection();
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(urlConnection.getInputStream()));
-            
+
             String line;
             while ((line = bufferedReader.readLine()) != null)
             {
@@ -103,7 +97,23 @@ public class StarLeafCloudClient {
         catch(Exception e){ e.printStackTrace(); }
         return content.toString();
     }
-    
+
+    private static int postJsonResponse(String theUrl, String theJson){
+        try{
+            URL responseUrl = new URL( theUrl );
+            byte[] postDataBytes = theJson.getBytes("UTF-8");
+            HttpURLConnection conn = (HttpURLConnection)responseUrl.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-type", "application/json");
+            conn.setRequestProperty("Content-Length", String.valueOf(postDataBytes.length));
+            conn.setDoOutput(true);
+            conn.getOutputStream().write(postDataBytes);
+            return conn.getResponseCode();
+        }
+        catch(Exception e){ e.printStackTrace();  }
+        return 0;
+    }
+
     private static byte[] hexStringToByteArray(String s) {
         int len = s.length();
         byte[] data = new byte[len / 2];
@@ -113,15 +123,15 @@ public class StarLeafCloudClient {
         }
         return data;
     }
-    
-    public static String bytesToHex(byte[] in) {
+
+    private static String bytesToHex(byte[] in) {
         final StringBuilder builder = new StringBuilder();
         for(byte b : in) {
             builder.append(String.format("%02x", b));
         }
         return builder.toString();
     }
-    
+
     private static SecretKey getEncryptedPassword(String password, byte[] salt,  int iterations,  int derivedKeyLength) throws NoSuchAlgorithmException, InvalidKeySpecException {
         KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, iterations, derivedKeyLength * 8);
         SecretKeyFactory f = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
