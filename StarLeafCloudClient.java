@@ -52,7 +52,27 @@ public class StarLeafCloudClient {
             responseObj.put("username", (String) userlogin);
             responseObj.put("response", (String) response);
             
-            System.out.println(responseObj);
+            URL responseUrl = new URL( api + "/authenticate");
+            
+            byte[] postDataBytes = responseObj.toString().getBytes("UTF-8");
+
+            HttpURLConnection conn = (HttpURLConnection)responseUrl.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-type", "application/json");
+            conn.setRequestProperty("Content-Length", String.valueOf(postDataBytes.length));
+            conn.setDoOutput(true);
+            conn.getOutputStream().write(postDataBytes);
+            
+            int code = conn.getResponseCode();
+            Reader in = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
+
+            for (int c; (c = in.read()) >= 0;)
+                System.out.print((char)c);
+        
+            System.out.println( "Got a response code of " + String.valueOf(code));
+            
+            
+            //System.out.println(responseObj);
             
         }
         catch(Exception e){ e.printStackTrace(); }
@@ -61,7 +81,7 @@ public class StarLeafCloudClient {
     
      public static void main(String[] args) {
         System.out.println("Creating a demo StarLeaf Cloud Client"); // Display the string.
-        StarLeafCloudClient myClient = new StarLeafCloudClient("as+mr@hjhkjh.com","ghuigjkgjhgjh");
+        StarLeafCloudClient myClient = new StarLeafCloudClient("as+mr@starleaf.com","as");
     }
     
     private static String getUrlContents(String theUrl)
