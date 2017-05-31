@@ -9,8 +9,8 @@ headers = {'Content-type': 'application/json'}
 Tested in Python 2.7 and Python 3.4
 You might need to pip install requests
 '''
-username = "<your StarLeaf account email address here>"
-password = "<your StarLeaf portal password here>"
+username = "<your StarLeaf Portal account email address>"
+password = "<your StarLeaf Portal account password>"
 api = "https://api.starleaf.com/v1"
 
 
@@ -35,11 +35,11 @@ class StarLeafClient(object):
     def _apiauthentication(self, salt_hex, iterations, challenge_hex):
         if self.key is None:
             salt = binascii.unhexlify(salt_hex)
-            self.key = hashlib.pbkdf2_hmac('sha256', bytes(self.password, "UTF-8"), salt, 10000)
+            self.key = hashlib.pbkdf2_hmac('sha256', str(self.password).encode(), salt, iterations)
 
         challenge = binascii.unhexlify(challenge_hex)
 
-        _hash = hmac.new(self.key, challenge, hashlib.sha256)
+        _hash = hmac.new(self.key, str(challenge).encode(), hashlib.sha256)
         response = _hash.hexdigest()
         return response
 
