@@ -1,8 +1,10 @@
 <?php
 //settings
-$username = "<Your StarLeaf Account email address>";
-$password = "<Your StarLeaf Account password>";
+$username = "<email address>";
+$password = "<password>";
 $api = "https://api.starleaf.com/v1/";
+//make the cookie file location somewhere writeable
+//for linux server etc change to '/tmp/cookie.txt'
 $cookiefile = dirname(__FILE__).'/cookie.txt';
 
 
