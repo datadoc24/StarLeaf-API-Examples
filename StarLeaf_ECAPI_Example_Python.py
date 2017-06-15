@@ -2,6 +2,7 @@ import requests
 import hashlib
 import hmac
 import binascii
+import time
 
 headers = {'Content-type': 'application/json'}
 
@@ -10,11 +11,11 @@ Tested in Python 2.7 and Python 3.4
 You might need to pip install requests
 '''
 # local IP address of your StarLeaf room system
-endpoint = "192.168.1.2"
+endpoint = "10.120.0.41"
 # ECAPI password or key of your StarLeaf room system, as configured in the portal (for Cloud endpoints)
 # or Web UI / Maestro (for GTm)
-password = "mypassword"
-testcall = "support@starleaf.com"
+password = "2345"
+testcall = "428247@starleaf.call.sl"
 
 '''
 Use this API for StarLeaf Cloud endpoints i.e GT Mini 3330 / GT 3351
@@ -31,7 +32,7 @@ GTm uses port 80 for ECAPI requests
 
 
 class StarLeafECAPIClient(object):
-    
+
     def __init__(self, endpoint, password, api):
         self.endpoint = endpoint
         self.password = password
@@ -57,7 +58,7 @@ class StarLeafECAPIClient(object):
         response = self._get('/auth')
         body = response.json()
         status = response.status_code
-            
+
         if status == 200:
             authresponse = self._apiauthentication(body['salt'],
                                                    body['iterations'],
@@ -78,7 +79,16 @@ class StarLeafECAPIClient(object):
         result = self._get('/action', params=params)
         return result.status_code
 
-    
+    def start_recording(self):
+        params = {'action': 'start_recording'}
+        result = self._get('/action', params=params)
+        return result.status_code
+
+    def stop_recording(self):
+        params = {'action': 'stop_recording'}
+        result = self._get('/action', params=params)
+        return result.status_code
+
 myClient = StarLeafECAPIClient(endpoint, password, api)
 authStatus = myClient.authenticate()
 
@@ -86,6 +96,10 @@ if authStatus is True:
     # place a test call to StarLeaf Demo Line
     print("Authenticated successfully. Placing a test call to " + testcall)
     myClient.call(testcall)
+    time.sleep(10)
+    print ("Rec start status code " + str(myClient.start_recording()))
+    time.sleep(10)
+    print ("Rec stop status code " + str(myClient.stop_recording()))
 
 else:
     print ("Sorry - authentication failed. Check the endpoint's ECAPI settings and password or key")
