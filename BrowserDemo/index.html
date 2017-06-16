@@ -1,0 +1,106 @@
+<html>
+<head>
+  <title>StarLeaf Cloud API Auth demo</title>
+  <!--script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script-->
+  <script src='sha256.js'></script>
+</head>
+<body>
+<h1>Enter your StarLeaf Portal Credentials</h1>
+<label for="username">Email address :</label><input id='username' type=email><br />
+<label for="password">Password :</label><input id='password' type=password><br />
+<label for="salt">Salt :</label><input id='salt' type=text><br />
+<label for="challenge">Challenge :</label><input id='challenge' type=text><br />
+<button id="button">Log In</button>
+</body>
+<script>
+
+/*
+The key calculation in this script works fine; however, the script won't generally work in browsers because api.starleaf.com doesn't
+yet implement CORS. So your browser won't let you access the /challenge values, nor post your response.
+*/
+
+var iterations=10000;
+
+$('#button').click(function(){
+    var username = $('#username').val();
+	var password = $('#password').val();
+	var salt = $('#salt').val();
+	var challenge = $('#challenge').val();
+   
+    /*
+    $.getJSON("https://api.starleaf.com/v1/challenge?username="+username, function(data){
+        alert("Got a challenge of "+data.challenge);
+    })
+    */
+
+	var salt_binary = hexToByteArray(salt);
+    var challenge_binary = hexToByteArray(challenge);
+	var password_bytearr = strToByteArray(password);
+   
+	var key = sha256.pbkdf2(password_bytearr, salt_binary, iterations, 32);
+	
+	console.log("Got key byte vals of "+bufferByteVals(key));
+	
+	var hmac = sha256.hmac(key, challenge_binary);
+	var response = byteArrayToHex(hmac);
+	
+	console.log("Got a hex response of "+response);
+	
+	var jsonResponse = '{"username":"'+username+'","response":"'+response+'"}';
+	
+	// construct an HTTP request
+	var xhr = new XMLHttpRequest();
+	xhr.open("POST", "https://api.starleaf.com/v1/authenticate", true);
+	xhr.setRequestHeader('Content-Type', 'application/json');
+	xhr.send(jsonResponse);
+	xhr.onloadend = function () {
+     //check for response status of 204 (authenticated) then do whatever
+	 //browser will take care of the cookie setting for you
+	};
+})
+
+function bufferByteVals(buf){
+	var str_out='';
+	
+	for (var i=0; i < buf.length; i++){
+		str_out = str_out + buf[i] + ' ';
+	}
+	
+	return str_out;
+}
+
+function hexToByteArray(hexval){
+	
+	var arrayLength = hexval.length / 2;
+	
+	var byteArr = new Uint8Array(arrayLength);
+	
+	var sub;
+	
+	for(var i=0 ; i < arrayLength ; i++){
+		sub = hexval.substring(i*2, (i*2)+2);
+		val = parseInt(sub, 16);
+		byteArr[i]=val;
+		console.log("Doing cycle "+i+" on "+sub+" and got "+val);
+	}
+	return byteArr;
+}
+
+function byteArrayToHex(buf) {
+	var str_out='';
+	
+	for (var i=0; i < buf.length; i++){
+		str_out = str_out + buf[i].toString(16);
+	}
+	
+	return str_out;
+  
+}
+
+function strToByteArray(s) {
+    var i, d = unescape(encodeURIComponent(s)), b = new Uint8Array(d.length);
+    for (i = 0; i < d.length; i++) b[i] = d.charCodeAt(i);
+    return b;
+}; 
+</script>
+</html>
