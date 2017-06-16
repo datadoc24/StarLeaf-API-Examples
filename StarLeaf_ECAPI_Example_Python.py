@@ -11,11 +11,11 @@ Tested in Python 2.7 and Python 3.4
 You might need to pip install requests
 '''
 # local IP address of your StarLeaf room system
-endpoint = "10.120.0.41"
+endpoint = "192.168.1.10"
 # ECAPI password or key of your StarLeaf room system, as configured in the portal (for Cloud endpoints)
 # or Web UI / Maestro (for GTm)
 password = "2345"
-testcall = "428247@starleaf.call.sl"
+testcall = "demo@starleaf.com"
 
 '''
 Use this API for StarLeaf Cloud endpoints i.e GT Mini 3330 / GT 3351
