@@ -1,5 +1,4 @@
 .idea/
 *.class
 *.txt
-checker.py
-Node/
+NodeJS/node_modules
