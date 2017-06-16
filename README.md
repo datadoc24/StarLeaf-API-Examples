@@ -4,3 +4,4 @@ StarLeaf is a video conferencing vendor with a cloud management/conferencing pla
 The StarLeafCloud examples implement the challenge/response authentication mechanism described here:
 https://support.starleaf.com/integrating/cloud-api/using-the-starleaf-cloud-api/
 
+These examples are not produced or supported by StarLeaf.
