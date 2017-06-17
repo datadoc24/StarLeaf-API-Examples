@@ -1,0 +1,80 @@
+<html>
+<head>
+  <title>StarLeaf Endpoint API Auth demo</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script src='sha256.js'></script>
+</head>
+<body>
+<h1>Enter your StarLeaf Endpoint Local IP and Password</h1>
+<label for="ip">IP address :</label><input id='ip' type=text><br />
+<label for="password">Password :</label><input id='password' type=password><br />
+<button id="button">Log In</button>
+</body>
+<script>
+
+$( '#button' ).click(function(){
+    var ip = $( '#ip' ).val();
+	var password = $( '#password' ).val();
+    var password_bytearr = strToByteArray(password);
+	
+    // construct an HTTP request to get the salt from the endpoint
+    var url='http://' + ip + ':23456/auth';
+	var xhr = new XMLHttpRequest();
+	xhr.open("GET", url, true);
+	xhr.send();
+	
+    xhr.onloadend = function () {
+        var d = JSON.parse(this.responseText);
+        var salt_binary = hexToByteArray(d.salt);
+        var challenge_binary = hexToByteArray(d.challenge);
+        var key = sha256.pbkdf2(password_bytearr, salt_binary, d.iterations, 32);
+        var hmac = sha256.hmac(key, challenge_binary);
+        var response = byteArrayToHex(hmac);
+        
+        url = url + '?challenge=' + d.challenge + '&response=' + response;
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", url, true);
+        xhr.send();
+	
+        xhr.onloadend = function () {
+            var d = JSON.parse(this.responseText);
+            if (d.authenticated==true){
+                console.log("Authenticated - yay");
+            }
+            else {
+             console.log("Sorry, wrong password");
+            }
+        };
+    };
+})
+
+function hexToByteArray(hexval){
+	var arrayLength = hexval.length / 2;
+	var byteArr = new Uint8Array(arrayLength);
+	var sub;
+	
+	for(var i=0 ; i < arrayLength ; i++){
+		sub = hexval.substring(i*2, (i*2)+2);
+		val = parseInt(sub, 16);
+		byteArr[i]=val;
+	}
+	return byteArr;
+}
+
+function byteArrayToHex(buf) {
+	var str_out='';
+	
+	for (var i=0; i < buf.length; i++){
+		str_out = str_out + buf[i].toString(16);
+	}
+	
+	return str_out;
+}
+
+function strToByteArray(s) {
+    var i, d = unescape(encodeURIComponent(s)), b = new Uint8Array(d.length);
+    for (i = 0; i < d.length; i++) b[i] = d.charCodeAt(i);
+    return b;
+}; 
+</script>
+</html>
