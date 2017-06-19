@@ -1,21 +1,28 @@
 <html>
 <head>
-  <title>StarLeaf Endpoint API Auth demo</title>
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <title>StarLeaf Cloud Endpoint (GT Mini 3330 / GT 3351) API Auth demo</title>
   <script src='sha256.js'></script>
 </head>
 <body>
-<h1>Enter your StarLeaf Endpoint Local IP and Password</h1>
-<label for="ip">IP address :</label><input id='ip' type=text><br />
-<label for="password">Password :</label><input id='password' type=password><br />
-<button id="button">Log In</button>
+<h1>Enter your StarLeaf Endpoint Local IP and ECAPI Password</h1>
+<p>ECAPI must be enabled over IP in this endpoint's <a href="https://portal.starleaf.com">StarLeaf Portal account</a>, and a password set there.</p>
+<label for="ip">IP address :</label><input id='ip' type=text><br /><br />
+<label for="password">Password :</label><input id='password' type=password><br /><br />
+<label for="number">Number/URI to dial :</label><input id='number' type=text value="support@starleaf.com"><br /><br />
+<button id="button">Make the call</button>
 </body>
 <script>
 
-$( '#button' ).click(function(){
-    var ip = $( '#ip' ).val();
-	var password = $( '#password' ).val();
-    var password_bytearr = strToByteArray(password);
+var button = document.getElementById("button"); 
+
+button.onclick = function(){
+    //var ip = $( '#ip' ).val();
+	//var password = $( '#password' ).val();
+	//var number = $( '#number' ).val();
+    var ip = document.getElementById("ip").value;
+	var password = document.getElementById("password").value;
+	var number = document.getElementById("number").value;
+	var password_bytearr = strToByteArray(password);
 	
     // construct an HTTP request to get the salt from the endpoint
     var url='http://' + ip + ':23456/auth';
@@ -25,12 +32,12 @@ $( '#button' ).click(function(){
 	
     xhr.onloadend = function () {
         var d = JSON.parse(this.responseText);
-        var salt_binary = hexToByteArray(d.salt);
-        var challenge_binary = hexToByteArray(d.challenge);
+		var salt_binary = hexToByteArray(d.salt);
+        var challenge_bytearr = strToByteArray(d.challenge);
         var key = sha256.pbkdf2(password_bytearr, salt_binary, d.iterations, 32);
-        var hmac = sha256.hmac(key, challenge_binary);
+        var hmac = sha256.hmac(key, challenge_bytearr);
         var response = byteArrayToHex(hmac);
-        
+		
         url = url + '?challenge=' + d.challenge + '&response=' + response;
         var xhr = new XMLHttpRequest();
         xhr.open("GET", url, true);
@@ -38,15 +45,19 @@ $( '#button' ).click(function(){
 	
         xhr.onloadend = function () {
             var d = JSON.parse(this.responseText);
-            if (d.authenticated==true){
-                console.log("Authenticated - yay");
-            }
+            
+			if (d.authenticated==true){
+                var xhr = new XMLHttpRequest();
+				var dial_url='http://' + ip + ':23456/action?action=dial&number='+number+'&session='+d.session;
+				xhr.open("GET", dial_url, true);
+				xhr.send();
+		    }
             else {
              console.log("Sorry, wrong password");
             }
         };
     };
-})
+}
 
 function hexToByteArray(hexval){
 	var arrayLength = hexval.length / 2;
@@ -65,9 +76,10 @@ function byteArrayToHex(buf) {
 	var str_out='';
 	
 	for (var i=0; i < buf.length; i++){
-		str_out = str_out + buf[i].toString(16);
+		hex_string = "0" + buf[i].toString(16);
+		hex_string = hex_string.slice(-2);
+		str_out = str_out + hex_string;
 	}
-	
 	return str_out;
 }
 
