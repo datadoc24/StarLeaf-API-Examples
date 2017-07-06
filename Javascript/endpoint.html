@@ -9,55 +9,95 @@
 <label for="ip">IP address :</label><input id='ip' type=text><br /><br />
 <label for="password">Password :</label><input id='password' type=password><br /><br />
 <label for="number">Number/URI to dial :</label><input id='number' type=text value="support@starleaf.com"><br /><br />
-<button id="button">Make the call</button>
+<button id="button"></button>
+<div id="status" style="margin-top:20px;font-weight:bold;color:blue;">Not in a call.</div>
 </body>
 <script>
 
-var button = document.getElementById("button"); 
+var buttonIdleText = "Make the call";
+var buttonActiveText = "Hang up";
+var session, ip, password, url, number;
+
+var button = document.getElementById("button");
+var statusbox = document.getElementById("status");
+
+button.innerHTML = buttonIdleText;
 
 button.onclick = function(){
-    //var ip = $( '#ip' ).val();
-	//var password = $( '#password' ).val();
-	//var number = $( '#number' ).val();
-    var ip = document.getElementById("ip").value;
-	var password = document.getElementById("password").value;
-	var number = document.getElementById("number").value;
-	var password_bytearr = strToByteArray(password);
 	
-    // construct an HTTP request to get the salt from the endpoint
-    var url='http://' + ip + ':23456/auth';
-	var xhr = new XMLHttpRequest();
-	xhr.open("GET", url, true);
-	xhr.send();
+	ip = document.getElementById("ip").value;
+	password = document.getElementById("password").value;
+	baseURL='http://' + ip + ':23456';
+	number = document.getElementById("number").value;
 	
-    xhr.onloadend = function () {
-        var d = JSON.parse(this.responseText);
-		var salt_binary = hexToByteArray(d.salt);
-        var challenge_bytearr = strToByteArray(d.challenge);
-        var key = sha256.pbkdf2(password_bytearr, salt_binary, d.iterations, 32);
-        var hmac = sha256.hmac(key, challenge_bytearr);
-        var response = byteArrayToHex(hmac);
+	switch(button.innerHTML) {
 		
-        url = url + '?challenge=' + d.challenge + '&response=' + response;
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", url, true);
-        xhr.send();
+		case buttonIdleText:
+			button.innerHTML = buttonActiveText;
+			authenticateAndDial();
+			break;
 	
-        xhr.onloadend = function () {
-            var d = JSON.parse(this.responseText);
-            
-			if (d.authenticated==true){
-                var xhr = new XMLHttpRequest();
-				var dial_url='http://' + ip + ':23456/action?action=dial&number='+number+'&session='+d.session;
-				xhr.open("GET", dial_url, true);
-				xhr.send();
-		    }
-            else {
-             console.log("Sorry, wrong password");
-            }
-        };
-    };
+		case buttonActiveText:
+			button.innerHTML = buttonIdleText;
+			hangup();
+			break;
+	}
 }
+
+function authenticateAndDial(){
+	statusbox.innerHTML = "Authenticating...";
+	// construct an HTTP request to get the salt from the endpoint
+	var authURL = baseURL + '/auth';
+	var xhr = new XMLHttpRequest();
+	xhr.open("GET", authURL, true);
+	xhr.send();
+	xhr.onloadend = authResponseFunction;
+}
+
+
+var authResponseFunction =  function () {
+    var d = JSON.parse(this.responseText);
+	var salt_binary = hexToByteArray(d.salt);
+    var challenge_bytearr = strToByteArray(d.challenge);
+	var password_bytearr = strToByteArray(password);
+	var key = sha256.pbkdf2(password_bytearr, salt_binary, d.iterations, 32);
+    var hmac = sha256.hmac(key, challenge_bytearr);
+    var response = byteArrayToHex(hmac);
+		
+    var responseURL = baseURL + '/auth?challenge=' + d.challenge + '&response=' + response;
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", responseURL, true);
+    xhr.send();
+	xhr.onloadend = challengeResponseFunction;
+}
+
+var challengeResponseFunction = function () {
+	var d = JSON.parse(this.responseText);
+
+    if (d.authenticated==true){
+		session = d.session;
+		statusbox.innerHTML = "Successfully authenticated. Dialling" + number;
+		var xhr = new XMLHttpRequest();
+		var dialURL = baseURL + '/action?action=dial&number='+number+'&session='+session;
+		xhr.open("GET", dialURL, true);
+		xhr.send();
+		statusbox.innerHTML = "In a call to " + number;
+	}
+    else {
+		statusbox.innerHTML = "Sorry, wrong password";
+		button.innerHTML = buttonIdleText;
+    }
+}
+
+
+function hangup(){
+	var xhr = new XMLHttpRequest();
+	var hangup_url='http://' + ip + ':23456/action?action=hangup&session='+session;
+	xhr.open("GET", hangup_url, true);
+	xhr.send();
+	statusbox.innerHTML = "Not in a call.";
+}
+
 
 function hexToByteArray(hexval){
 	var arrayLength = hexval.length / 2;
