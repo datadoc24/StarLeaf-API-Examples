@@ -39,7 +39,7 @@ class StarLeafClient(object):
 
         challenge = binascii.unhexlify(challenge_hex)
 
-        _hash = hmac.new(self.key, str(challenge).encode(), hashlib.sha256)
+        _hash = hmac.new(self.key, challenge, hashlib.sha256)
         response = _hash.hexdigest()
         return response
 
